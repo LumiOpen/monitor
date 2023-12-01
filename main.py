@@ -66,9 +66,6 @@ def format_seconds(seconds):
 
 def main():
     job_names = [
-        "vik13B-3",
-        "viking7B",
-        "data_pt33b128",
         "pretrain_33B_128_node.sh",
         "viking_v2_7B",
         "viking_v2_13B",
