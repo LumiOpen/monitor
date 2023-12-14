@@ -1,6 +1,7 @@
 import subprocess
-from dataclasses import dataclass, asdict, field
 from datetime import datetime
+from pydantic import BaseModel, validator
+
 
 
 STATUS_RUNNING = [
@@ -63,32 +64,23 @@ def parse_time(time_str):
     total_seconds = days * 86400 + hours * 3600 + minutes * 60 + seconds
     return total_seconds
 
-
-@dataclass
-class JobState:
+class JobState(BaseModel):
     job_id: int
     state: str
     name: str
     time_running: int
     time_left: int
     time_since_submit: int
-    running: bool = field(init=False)
-    pending: bool = field(init=False)
+    running: bool = False
+    pending: bool = False
 
-    def __post_init__(self):
-        self.running = self.check_running()
-        self.pending = self.check_pending()
+    @validator('running', always=True)
+    def check_running(cls, v, values):
+        return values.get('state') in STATUS_RUNNING
 
-    def check_running(self):
-        return self.state in STATUS_RUNNING
-    
-    def check_pending(self):
-        return self.state in STATUS_PENDING
-
-    # to assist in serialization
-    def to_dict(self):
-        return asdict(self)
-
+    @validator('pending', always=True)
+    def check_pending(cls, v, values):
+        return values.get('state') in STATUS_PENDING
 
 
 # squeue -o '%i %T %j %M %L %V'
@@ -113,7 +105,14 @@ def get_job_state(users):
             # parse submit_time and calculate number of seconds since that time
             submit_time_datetime = datetime.strptime(submit_time, "%Y-%m-%dT%H:%M:%S")
             time_since_submit = int((datetime.now() - submit_time_datetime).total_seconds())
-            job_state = JobState(int(job_id), state, name, time_running_seconds, time_left_seconds, time_since_submit)
+            job_state = JobState(
+                job_id=int(job_id), 
+                state=state, 
+                name=name, 
+                time_running=time_running_seconds, 
+                time_left=time_left_seconds, 
+                time_since_submit=time_since_submit
+            )
             job_states.append(job_state)
     return job_states
 

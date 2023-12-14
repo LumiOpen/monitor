@@ -10,6 +10,27 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+class Job:
+    def __init__(self, name, logfile=None):
+        self.name = name
+        self.logfile = logfile
+
+    def stalled(self):
+        if self.logfile is None:
+            return False
+
+        if not os.path.exists(self.logfile):
+            return True
+        
+        mtime = os.path.getmtime(self.logfile)
+        return time.time() - mtime > 3600
+
+    def __str__(self):
+        return self.name
+
+        
+
+
 def get_current_snapshot(job_names, users):
     jobs = {}
     jobs_running_count = collections.defaultdict(int)
@@ -62,14 +83,16 @@ def format_seconds(seconds):
     seconds %= 60
     formatted = "%02dd%02dh%02dm%02ds" % (days, hours, minutes, seconds)
     return formatted
-            
+
 
 def main():
-    job_names = [
-        "pretrain_33B_128_node.sh",
-        "viking_v2_7B",
-        "viking_v2_13B",
-        "viking_v2_33B",
+    job_config = [
+        Job("pretrain_33B_128_node.sh"),
+        Job("nordic-7"),
+        Job("nordic-13"),
+        Job("viking_v2_7B_high_eps", '/scratch/project_462000319/production/logs-7B_high_eps/latest.out'),
+        Job("viking_v2_13B_high_eps", '/scratch/project_462000319/production/logs-13B_high_eps/latest.out'),
+        Job("viking_v2_33B_high_eps", '/scratch/project_462000319/production/logs-33B_high_eps/latest.out'),
     ]
     users = [
         'jburdge',
@@ -88,7 +111,7 @@ def main():
     first_run = True
     while True:
         try:
-            jobs, jobs_running = get_current_snapshot(job_names, users)
+            jobs, jobs_running = get_current_snapshot([job.name for job in job_config], users)
         except subprocess.CalledProcessError as e:
             print(f"error getting snapshot from slurm: {e.output}")
             time.sleep(10)
@@ -106,6 +129,14 @@ def main():
             for job in sorted(jobs.values(), key=lambda x: x.time_left):
                 time_left = format_seconds(job.time_left)
                 messages.append(f"{job.name} {job.job_id} {job.state} {time_left} remaining")
+
+            for job in job_config:
+                current_job = jobs.get(job.name, None)
+                if current_job is not None:
+                    if current_job.running and job.stalled():
+                        messages.append(f"{job.name} looks stalled: {job.logfile}")
+
+
         last_time = current_time
         if messages:
             post_msg("\n".join(messages))
@@ -113,9 +144,9 @@ def main():
         # stateful messages
         # job status
         messages = []
-        for job in job_names:
-            last_job = last_state.get(job, None)
-            current_job = jobs.get(job, None)
+        for job in job_config:
+            last_job = last_state.get(job.name, None)
+            current_job = jobs.get(job.name, None)
 
 
             if last_job is None:
@@ -127,8 +158,15 @@ def main():
                 messages.append(f"Job ended: {job} {last_job.job_id} last known state {last_job.state}")
             elif last_job.running != current_job.running:
                 time_left = format_seconds(current_job.time_left)
-                messages.append(f"Job changed state: {job} {last_job.job_id}:{last_job.state} -> {current_job.job_id}:{current_job.state} ({time_left} remaining")
-            last_state[job] = current_job
+                messages.append(f"Job changed state: {job.name} {last_job.job_id}:{last_job.state} -> {current_job.job_id}:{current_job.state} ({time_left} remaining")
+            elif current_job.running:
+                # check if job is stalled
+                if job.stalled():
+                    print(f"job {job} looks stalled")
+            last_state[job.name] = current_job
+
+                
+                
 
         # free space
         for path, min_free in min_storage.items():
@@ -150,6 +188,12 @@ def main():
             continue
         if messages:
             post_msg("\n".join(messages))
+
+        with open("log.jsonl", "a") as f:
+            f.write(json.dumps({
+                "timestamp": time.time(),
+                "job_state": {k: v.model_dump() for k,v in last_state.items()},
+            }) + "\n")
 
         time.sleep(60)
 
