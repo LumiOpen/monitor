@@ -192,7 +192,7 @@ def main():
         with open("log.jsonl", "a") as f:
             f.write(json.dumps({
                 "timestamp": time.time(),
-                "job_state": {k: v.model_dump() for k,v in last_state.items()},
+                "job_state": {k: v.model_dump() for k,v in last_state.items() if v is not None},
             }) + "\n")
 
         time.sleep(60)
