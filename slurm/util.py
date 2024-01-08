@@ -73,6 +73,13 @@ class JobState(BaseModel):
     time_since_submit: int
     running: bool = False
     pending: bool = False
+    emoji: str = "🤔"
+
+    @validator('emoji', always=True)
+    def check_emoji(cls, v, values):
+        if values.get('state') in STATUS_RUNNING:
+            return "✅"
+        return "⏸️"
 
     @validator('running', always=True)
     def check_running(cls, v, values):

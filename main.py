@@ -85,6 +85,7 @@ def format_seconds(seconds):
     return formatted
 
 
+
 def main():
     job_config = [
         Job("pretrain_33B_128_node.sh"),
@@ -128,7 +129,7 @@ def main():
             messages.append("Morning job status:")
             for job in sorted(jobs.values(), key=lambda x: x.time_left):
                 time_left = format_seconds(job.time_left)
-                messages.append(f"{job.name} {job.job_id} {job.state} {time_left} remaining")
+                messages.append(f"{job.name} {job.job_id} {job.state}{job.emoji} {time_left} remaining")
 
             for job in job_config:
                 current_job = jobs.get(job.name, None)
@@ -152,13 +153,13 @@ def main():
             if last_job is None:
                 if current_job is not None:
                     time_left = format_seconds(current_job.time_left)
-                    messages.append(f"New job detected: {job} {current_job.job_id} in {current_job.state} ({time_left} remaining)")
+                    messages.append(f"New job detected: {job} {current_job.job_id} in {current_job.state}{current_job.emoji} ({time_left} remaining)")
             elif current_job is None:
                 time_left = format_seconds(last_job.time_left)
                 messages.append(f"Job ended: {job} {last_job.job_id} last known state {last_job.state}")
             elif last_job.running != current_job.running:
                 time_left = format_seconds(current_job.time_left)
-                messages.append(f"Job changed state: {job.name} {last_job.job_id}:{last_job.state} -> {current_job.job_id}:{current_job.state} ({time_left} remaining")
+                messages.append(f"Job changed state: {job.name} {last_job.job_id}:{last_job.state}{last_job.emoji} -> {current_job.job_id}:{current_job.state}{current_job.emoji} ({time_left} remaining")
             elif current_job.running:
                 # check if job is stalled
                 if job.stalled():
