@@ -3,6 +3,7 @@ import datetime
 import json
 import os
 import requests
+import re
 import slurm.util
 import subprocess
 import time
@@ -11,9 +12,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Job:
-    def __init__(self, name, logfile=None):
+    def __init__(self, name, logfile=None, latest=None, total=None):
         self.name = name
         self.logfile = logfile
+        self.latest = latest
+        self.total = total
 
     def stalled(self):
         if self.logfile is None:
@@ -25,10 +28,62 @@ class Job:
         mtime = os.path.getmtime(self.logfile)
         return time.time() - mtime > 3600
 
+    def progress(self):
+        if self.latest is None or self.total is None:
+            print("not configured")
+            return " "
+        try:
+            with open(self.latest, "r") as f: 
+                line = f.readlines()[0]
+        except Exception as e:
+            print(f"exception: {e}")
+            return " "
+
+        groups = re.search("(\d+)$", line)
+        if not groups:
+            print("no match")
+            return " "
+        
+        step = int(groups[0])
+        progress = step / self.total * 100
+        return f" {progress:2.1f}% "
+
     def __str__(self):
         return self.name
 
-        
+job_config = [
+    Job("pretrain_33B_128_node.sh",
+        logfile='/scratch/project_462000319/production/logs-7B_high_eps/latest.out',
+        latest="/flash/project_462000319/megatron-33B-checkpoints/run_fixed_starcoder/latest",
+        total=238419),
+    Job("nordic-7"),
+    Job("nordic-13"),
+    Job("viking_v2_7B_high_eps",
+        logfile='/scratch/project_462000319/production/logs-7B_high_eps/latest.out',
+        latest='/scratch/project_462000086/viking-v2/7B_high_eps/latest_checkpointed_iteration.txt',
+        total=476837,
+    ),
+    Job("viking_v2_13B_high_eps",
+        logfile='/scratch/project_462000319/production/logs-13B_high_eps/latest.out',
+        latest='/scratch/project_462000086/viking-v2/13B_high_eps/latest_checkpointed_iteration.txt',
+        total=476837,
+    ),
+    Job("viking_v2_33B_high_eps",
+        logfile='/scratch/project_462000319/production/logs-33B_high_eps/latest.out',
+        latest='/scratch/project_462000086/viking-v2/33B_high_eps/latest_checkpointed_iteration.txt',
+        total=476837,
+    ),
+]
+users = [
+    'jburdge',
+    'pyysalos',
+    'rluukkon'
+]
+min_storage = {
+    "/flash/project_462000319": 10e12,
+    "/scratch/project_462000319": 10e12,
+    "/scratch/project_462000086": 10e12,
+}
 
 
 def get_current_snapshot(job_names, users):
@@ -85,27 +140,14 @@ def format_seconds(seconds):
     return formatted
 
 
+def get_progress(job_state):
+    for config in job_config:
+        if job_state.name == config.name:
+            progress = config.progress()
+            return progress
+    return ""
 
 def main():
-    job_config = [
-        Job("pretrain_33B_128_node.sh"),
-        Job("nordic-7"),
-        Job("nordic-13"),
-        Job("viking_v2_7B_high_eps", '/scratch/project_462000319/production/logs-7B_high_eps/latest.out'),
-        Job("viking_v2_13B_high_eps", '/scratch/project_462000319/production/logs-13B_high_eps/latest.out'),
-        Job("viking_v2_33B_high_eps", '/scratch/project_462000319/production/logs-33B_high_eps/latest.out'),
-    ]
-    users = [
-        'jburdge',
-        'pyysalos',
-        'rluukkon'
-    ]
-    min_storage = {
-        "/flash/project_462000319": 10e12,
-        "/scratch/project_462000319": 10e12,
-        "/scratch/project_462000086": 10e12,
-    }
-
     last_state = {}
     last_time = datetime.datetime.now()
     storage_warnings_active = {}
@@ -129,7 +171,8 @@ def main():
             messages.append("Morning job status:")
             for job in sorted(jobs.values(), key=lambda x: x.time_left):
                 time_left = format_seconds(job.time_left)
-                messages.append(f"{job.name} {job.job_id} {job.state}{job.emoji} {time_left} remaining")
+                progress = get_progress(job)
+                messages.append(f"{job.name}{progress}{job.job_id} {job.state} {job.emoji} {time_left} remaining")
 
             for job in job_config:
                 current_job = jobs.get(job.name, None)
@@ -153,13 +196,16 @@ def main():
             if last_job is None:
                 if current_job is not None:
                     time_left = format_seconds(current_job.time_left)
-                    messages.append(f"New job detected: {job} {current_job.job_id} in {current_job.state}{current_job.emoji} ({time_left} remaining)")
+                    progress = get_progress(job)
+                    messages.append(f"New job detected: {job}{progress}{current_job.job_id} in {current_job.state} {current_job.emoji} ({time_left} remaining)")
             elif current_job is None:
                 time_left = format_seconds(last_job.time_left)
-                messages.append(f"Job ended: {job} {last_job.job_id} last known state {last_job.state}")
+                progress = get_progress(job)
+                messages.append(f"Job ended: {job}{progress}{last_job.job_id} last known state {last_job.state}")
             elif last_job.running != current_job.running:
                 time_left = format_seconds(current_job.time_left)
-                messages.append(f"Job changed state: {job.name} {last_job.job_id}:{last_job.state}{last_job.emoji} -> {current_job.job_id}:{current_job.state}{current_job.emoji} ({time_left} remaining")
+                progress = get_progress(job)
+                messages.append(f"Job changed state: {job.name}{progress}{last_job.job_id}:{last_job.state} {last_job.emoji} -> {current_job.job_id}:{current_job.state} {current_job.emoji} ({time_left} remaining")
             elif current_job.running:
                 # check if job is stalled
                 if job.stalled():
