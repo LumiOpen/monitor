@@ -53,7 +53,7 @@ class Job:
 
 job_config = [
     Job("pretrain_33B_128_node.sh",
-        logfile='/scratch/project_462000319/production/logs-7B_high_eps/latest.out',
+        logfile='/scratch/project_462000319/rluukkon/Megatron-DeepSpeed-Sampo/logs/latest.out',
         latest="/flash/project_462000319/megatron-33B-checkpoints/run_fixed_starcoder/latest",
         total=238419,
     ),
