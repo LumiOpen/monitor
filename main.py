@@ -178,7 +178,7 @@ def main():
         current_time = datetime.datetime.now()
         if last_time.hour == 8 and current_time.hour == 9:
             messages.append("Morning job status:")
-            for job in sorted(jobs.values(), key=lambda x: x.time_left):
+            for job in sorted(jobs.values(), key=lambda x: x.name):
                 time_left = format_seconds(job.time_left)
                 progress = get_progress(job)
                 messages.append(f"{job.name}{progress}{job.job_id} {job.state} {job.emoji} {time_left} remaining")
