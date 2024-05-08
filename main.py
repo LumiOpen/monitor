@@ -52,25 +52,20 @@ class Job:
         return self.name
 
 job_config = [
-    Job("pretrain_33B_128_node.sh",
-        logfile='/scratch/project_462000319/rluukkon/Megatron-DeepSpeed-Sampo/logs/latest.out',
-        latest="/flash/project_462000319/megatron-33B-checkpoints/run_fixed_starcoder/latest",
-        total=238419,
-    ),
-    Job("nordic-7",
-        logfile=None,
-        latest="/flash/project_462000319/viking-V1-7B-checkpoints/latest",
-        total=953674,
-    ),
-    Job("nordic-13",
-        logfile=None,
-        latest="/flash/project_462000319/viking-13B-checkpoints/latest",
-        total=953674,
-    ),
     Job("viking_v2_7B_high_eps",
         logfile='/scratch/project_462000319/production/logs-7B_high_eps/latest.out',
         latest='/scratch/project_462000086/viking-v2/7B_high_eps/latest_checkpointed_iteration.txt',
         total=476837,
+    ),
+    Job("viking_v2_7B_nofa",
+        logfile='/scratch/project_462000319/production/logs-7B_nofa/latest.out',
+        latest='/scratch/project_462000086/viking-v2/7B_nofa/latest_checkpointed_iteration.txt',
+        total=476837,
+    ),
+    Job("warmstart_7B_viking_v3_64",
+        logfile="/scratch/project_462000319/rluukkon/megatron_tests/Megatron-LM-test2/logs-7B_high_eps/latest.out",
+        latest="/scratch/project_462000086/risto/viking-v3/v2_converted_checkpoints/viking_v2_7B_iter_0358000_bfloat16/latest_checkpointed_iteration.txt",
+        total=118837,
     ),
     Job("viking_v2_13B_high_eps",
         logfile='/scratch/project_462000319/production/logs-13B_high_eps/latest.out',
@@ -82,17 +77,41 @@ job_config = [
         latest='/scratch/project_462000086/viking-v2/33B_high_eps/latest_checkpointed_iteration.txt',
         total=476837,
     ),
+
+    Job("v3-train-70B",
+        logfile='/flash/project_462000319/europa-production/logs/latest.out',
+        latest='/scratch/project_462000353/europa-checkpoints/512N/latest_checkpointed_iteration.txt',
+        total=572204,
+    ),
+    Job("v3-train-1024N-70B",
+        logfile='/flash/project_462000319/europa-production/logs/latest_1024N.out',
+        latest='/scratch/project_462000353/europa-checkpoints/1024N/latest_checkpointed_iteration.txt',
+        total=572204,
+    ),
 ]
 users = [
     'jburdge',
     'pyysalos',
-    'rluukkon'
+    'rluukkon',
+    'avirtanen',
 ]
 min_storage = {
     "/flash/project_462000319": 10e12,
     "/scratch/project_462000319": 10e12,
+    "/flash/project_462000086": 1e12,
     "/scratch/project_462000086": 10e12,
+    "/flash/project_462000444": 1e12,
+    "/scratch/project_462000444": 10e12,
 }
+min_inodes = {
+    "/flash/project_462000319": 1e5,
+    "/scratch/project_462000319": 1e5,
+    "/scratch/project_462000086": 1e5,
+    "/flash/project_462000086": 1e5,
+    "/scratch/project_462000444": 1e5,
+    "/flash/project_462000444": 1e5,
+}
+
 
 
 def get_current_snapshot(job_names, users):
@@ -125,6 +144,10 @@ def get_free_space(path):
     free_blocks = stats.f_bfree
     return free_blocks * block_size
 
+def get_free_inodes(path):
+    stats = os.statvfs(path)
+    free_inodes = stats.f_ffree
+    return free_inodes
 
 
 def post_msg(message):
@@ -160,6 +183,7 @@ def main():
     last_state = {}
     last_time = datetime.datetime.now()
     storage_warnings_active = {}
+    inode_warnings_active = {}
     first_run = True
     while True:
         try:
@@ -236,6 +260,20 @@ def main():
             elif current_free < min_free:
                 storage_warnings_active[path] = True
                 messages.append(f"Warning: {path} has insufficient free space ({current_free} < {min_free})")
+
+
+        # free inodes
+        for path, min_free in min_inodes.items():
+            active_warning = inode_warnings_active.get(path, False)
+            current_free = get_free_inodes(path)
+
+            if active_warning:
+                if current_free > min_free:
+                    messages.append(f"{path} has sufficient free inodes ({current_free} > {min_free})")
+            elif current_free < min_free:
+                inode_warnings_active[path] = True
+                messages.append(f"Warning: {path} has insufficient free inodes ({current_free} < {min_free})")
+        
 
         # don't post any stateful messages on startup.
         if first_run:
