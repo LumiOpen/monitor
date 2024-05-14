@@ -26,7 +26,7 @@ class Job:
             return True
         
         mtime = os.path.getmtime(self.logfile)
-        return time.time() - mtime > 3600
+        return time.time() - mtime > 10800 # 3 hours to allow for very slow starts
 
     def progress(self):
         if self.latest is None or self.total is None:
@@ -184,6 +184,7 @@ def main():
     last_time = datetime.datetime.now()
     storage_warnings_active = {}
     inode_warnings_active = {}
+    stall_warnings_active = {}
     first_run = True
     while True:
         try:
@@ -241,8 +242,17 @@ def main():
                 messages.append(f"Job changed state: {job.name}{progress}{last_job.job_id}:{last_job.state} {last_job.emoji} -> {current_job.job_id}:{current_job.state} {current_job.emoji} ({time_left} remaining")
             elif current_job.running:
                 # check if job is stalled
-                if job.stalled():
-                    print(f"job {job} looks stalled")
+                active_warning = stall_warnings_active.get(job.name, False)
+                stalled = job.stalled()
+
+                if active_warning:
+                    if not stalled:
+                        stall_warnings_active[job.name] = False
+                        messages.append(f"{job.name} no longer appears to be stalled.")
+                elif stalled:
+                    stall_warnings_active[job.name] = True
+                    messages.append(f"{job.name} looks stalled: {job.logfile}")
+
             last_state[job.name] = current_job
 
                 
