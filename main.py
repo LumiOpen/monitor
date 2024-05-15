@@ -138,8 +138,6 @@ def get_current_snapshot(job_names, users):
 
 def get_free_space(path):
     stats = os.statvfs(path)
-    #total_inodes = stats.f_files
-    #free_inodes = stats.f_ffree
     block_size = stats.f_frsize
     free_blocks = stats.f_bfree
     return free_blocks * block_size
@@ -279,6 +277,7 @@ def main():
 
             if active_warning:
                 if current_free > min_free:
+                    inode_warnings_active[path] = False
                     messages.append(f"{path} has sufficient free inodes ({current_free} > {min_free})")
             elif current_free < min_free:
                 inode_warnings_active[path] = True
