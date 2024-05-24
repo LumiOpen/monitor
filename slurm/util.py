@@ -121,5 +121,8 @@ def get_job_state(users):
                 time_since_submit=time_since_submit
             )
             job_states.append(job_state)
-    return job_states
+
+        
+    # sort by job_id descending
+    return sorted(job_states, key=lambda x: x.job_id, reverse=True)
 
