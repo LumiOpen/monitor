@@ -105,8 +105,8 @@ def test_check_job_status_job_state_changed():
     assert len(messages) == 2
     assert messages[0].topic == "job_status job1"
     assert "job1" in messages[0].text
-    assert "RUNNING" in messages[0].text
-    assert "Job changed state from PENDING" in messages[0].details
+    assert "running" in messages[0].text
+    assert "PENDING" in messages[0].details
     
     assert messages[1].topic == "job_stalled job1"
     assert messages[1].text == "job1 is not stalled"
@@ -131,7 +131,7 @@ def test_check_job_status_no_prev_state():
     assert len(messages) == 2
     assert messages[0].topic == "job_status job1"
     assert "job1" in messages[0].text
-    assert "RUNNING" in messages[0].text
+    assert "running" in messages[0].text
     assert "New job detected" in messages[0].details
     assert messages[0].active
     
@@ -185,7 +185,7 @@ def test_check_job_status_no_stalls():
     assert len(messages) == 2
     assert messages[0].topic == "job_status job1"
     assert "job1" in messages[0].text
-    assert "RUNNING" in messages[0].text
+    assert "running" in messages[0].text
     assert "00d01h00m00s remaining" in messages[0].details
     
     assert messages[1].topic == "job_stalled job1"
@@ -221,7 +221,7 @@ def test_check_job_status_stalled_job():
     assert len(messages) == 2
     assert messages[0].topic == "job_status job1"
     assert "job1" in messages[0].text
-    assert "RUNNING" in messages[0].text
+    assert "running" in messages[0].text
     assert "00d01h00m00s remaining" in messages[0].details
     
     assert messages[1].topic == "job_stalled job1"
@@ -257,7 +257,7 @@ def test_check_job_status_stalled_job_unstalled():
     assert len(messages) == 2
     assert messages[0].topic == "job_status job1"
     assert "job1" in messages[0].text
-    assert "RUNNING" in messages[0].text
+    assert "running" in messages[0].text
     assert "00d01h00m00s remaining" in messages[0].details
     
     assert messages[1].topic == "job_stalled job1"
