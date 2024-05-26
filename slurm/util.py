@@ -101,28 +101,33 @@ def get_job_state(users):
     status, output = subprocess.getstatusoutput(command)
     if status != 0:
         raise subprocess.CalledProcessError(status, command, output)
+    
+    return parse_job_state(output)
 
+def parse_job_state(squeue_output):
     job_states = []
-    output_lines = output.split('\n')[1:]  # Skip the header line
+    output_lines = squeue_output.split('\n')
     for line in output_lines:
-        if line:  # Skip empty lines
-            job_id, state, name, time_running, time_left, submit_time = line.split()
-            time_running_seconds = parse_time(time_running)
-            time_left_seconds = parse_time(time_left)
-            # parse submit_time and calculate number of seconds since that time
-            submit_time_datetime = datetime.strptime(submit_time, "%Y-%m-%dT%H:%M:%S")
-            time_since_submit = int((datetime.now() - submit_time_datetime).total_seconds())
-            job_state = JobState(
-                job_id=int(job_id), 
-                state=state, 
-                name=name, 
-                time_running=time_running_seconds, 
-                time_left=time_left_seconds, 
-                time_since_submit=time_since_submit
-            )
-            job_states.append(job_state)
+        if not line or "JOBID" in line:
+            continue
 
-        
-    # sort by job_id descending
-    return sorted(job_states, key=lambda x: x.job_id, reverse=True)
+        job_id, state, name, time_running, time_left, submit_time = line.split()
+        time_running_seconds = parse_time(time_running)
+        time_left_seconds = parse_time(time_left)
+        # parse submit_time and calculate number of seconds since that time
+        submit_time_datetime = datetime.strptime(submit_time, "%Y-%m-%dT%H:%M:%S")
+        time_since_submit = int((datetime.now() - submit_time_datetime).total_seconds())
+        job_state = JobState(
+            job_id=int(job_id), 
+            state=state, 
+            name=name, 
+            time_running=time_running_seconds, 
+            time_left=time_left_seconds, 
+            time_since_submit=time_since_submit
+        )
+        job_states.append(job_state)
+
+    # return running jobs first, then sort by job id.
+    # (we use not x.running here to invert the sort order for running jobs)
+    return sorted(job_states, key=lambda x: (not x.running, x.job_id))
 
