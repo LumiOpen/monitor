@@ -51,8 +51,8 @@ def check_job_status(job_config, cluster_state, prev_cluster_state):
 
         topic = f"job_status {job.name}"
         if current_job is None:
+            text = f"{job.name} is not scheduled"
             if last_job is None:
-                text = f"{job.name} is not scheduled"
                 messages.append(Message(topic, text, None))
             else:
                 messages.append(Message(topic, text, f"last known state {last_job.state}"))
