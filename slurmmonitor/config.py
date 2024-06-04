@@ -27,7 +27,6 @@ class Job:
             with open(self.latest, "r") as f: 
                 line = f.readlines()[0]
         except Exception as e:
-            print(f"exception: {e}")
             return "?"
 
         groups = re.search("(\d+)$", line)
@@ -54,8 +53,8 @@ job_config = [
         total=476837,
     ),
     Job("v3-train-1024N-70B",
-        logfile='/flash/project_462000319/europa-production/logs/latest_1024N.out',
-        latest='/scratch/project_462000353/europa-checkpoints/1024N/latest_checkpointed_iteration.txt',
+        logfile='/scratch/project_462000353/europa-production/logs/latest_1024N.out',
+        latest='/scratch/project_462000353/europa-checkpoints/1024N-lr-fixed/latest_checkpointed_iteration.txt',
         total=572204,
     ),
     Job("7B_mistral_eng",
