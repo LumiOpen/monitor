@@ -32,8 +32,14 @@ def main():
     snapshot = None
     first_run = True
     while True:
+        try:
+            new_snapshot = ClusterDataSnapshot()
+        except Exception as e:
+            print(f"got exception getting ClusterDataSnapshot: {e}")
+            time.sleep(5)
+            continue
         prev_snapshot = snapshot
-        snapshot = ClusterDataSnapshot()
+        snapshot = new_snapshot
 
         messages = []
         messages.extend(check_free_bytes(free_bytes_config, snapshot))
