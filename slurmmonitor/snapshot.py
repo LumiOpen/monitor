@@ -22,6 +22,8 @@ class ClusterDataSnapshot:
 
         self.free_inodes = {path: get_free_inodes(path) for path in free_inodes_config}
         self.free_bytes = {path: get_free_bytes(path) for path in free_bytes_config}
+
+        self.queue_days = {"standard-g": slurm.util.get_queue_days("standard-g")}
     
     def _get_job_status(self, job_config, users):
         jobs = {}

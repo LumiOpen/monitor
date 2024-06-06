@@ -1,3 +1,4 @@
+import re
 import subprocess
 from datetime import datetime
 from pydantic import BaseModel, validator
@@ -131,3 +132,38 @@ def parse_job_state(squeue_output):
     # (we use not x.running here to invert the sort order for running jobs)
     return sorted(job_states, key=lambda x: (not x.running, x.job_id))
 
+
+# calculates cluster days in running or pending state, ignoring jobs that are
+# scheduled with a dependency
+def get_queue_days(queue="standard-g"):
+    command = f"scontrol show partition {queue}"
+    status, output = subprocess.getstatusoutput(command)
+    if status != 0:
+        raise subprocess.CalledProcessError(status, command, output)
+
+    m = re.search(r"TotalNodes=(\d+)", output)
+    if m:
+        node_count = int(m.group(1))
+    else:
+        raise Exception("Couldn't parse scontrol output")
+    if node_count == 0:
+        return "inf"
+
+
+    command = f"squeue -p {queue} -o '%D %l %T %R'"
+    status, output = subprocess.getstatusoutput(command)
+    if status != 0:
+        raise subprocess.CalledProcessError(status, command, output)
+
+    node_days = 0
+    for line in output.split("\n"):
+        # count jobs that are not scheduled for priority reasons only.
+        if '(Priority)' not in line and 'RUNNING' not in line:
+            continue
+
+        (nodes, time_left, _, _) = line.split(" ")
+        nodes = int(nodes)
+        days = parse_time(time_left) / 86400
+        node_days += nodes * days
+
+    return f"{node_days / node_count:.1f}"

@@ -4,7 +4,7 @@ import os
 import requests
 import time
 
-from slurmmonitor.checks import check_job_status, check_free_inodes, check_free_bytes
+from slurmmonitor.checks import check_job_status, check_free_inodes, check_free_bytes, check_queue_days
 from slurmmonitor.config import job_config, free_bytes_config, free_inodes_config
 from slurmmonitor.snapshot import ClusterDataSnapshot
 from slurmmonitor.message import MessageTracker
@@ -42,6 +42,7 @@ def main():
         snapshot = new_snapshot
 
         messages = []
+        messages.extend(check_queue_days(snapshot))
         messages.extend(check_free_bytes(free_bytes_config, snapshot))
         messages.extend(check_free_inodes(free_inodes_config, snapshot))
         messages.extend(check_job_status(job_config, snapshot, prev_snapshot))

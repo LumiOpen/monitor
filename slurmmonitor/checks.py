@@ -41,6 +41,15 @@ def check_free_inodes(free_inodes_config, cluster_state):
             ))
     return messages
 
+def check_queue_days(cluster_state):
+    messages = []
+    for queue, days in cluster_state.queue_days.items():
+        messages.append(Message(
+            f"queue_days_{queue}",
+            f"{queue} queue status",
+            f"{days} days"))
+    return messages
+
 
 def check_job_status(job_config, cluster_state, prev_cluster_state):
     messages = []
