@@ -42,11 +42,6 @@ class Job:
         return self.name
 
 job_config = [
-    Job("viking_v2_13B_high_eps",
-        logfile='/scratch/project_462000319/production/logs-13B_high_eps/latest.out',
-        latest='/scratch/project_462000086/viking-v2/13B_high_eps/latest_checkpointed_iteration.txt',
-        total=476837,
-    ),
     Job("viking_v2_33B_high_eps",
         logfile='/scratch/project_462000319/production/logs-33B_high_eps/latest.out',
         latest='/scratch/project_462000086/viking-v2/33B_high_eps/latest_checkpointed_iteration.txt',
@@ -56,9 +51,6 @@ job_config = [
         logfile='/scratch/project_462000353/europa-production/logs/latest_1024N.out',
         latest='/scratch/project_462000353/europa-checkpoints/1024N-lr-fixed/latest_checkpointed_iteration.txt',
         total=572204,
-    ),
-    Job("7B_mistral_eng",
-        logfile='/pfs/lustrep4/scratch/project_462000319/rluukkon/megatron_tests/Megatron-LM-test2/logs-mistral/latest.out',
     ),
         
 ]
