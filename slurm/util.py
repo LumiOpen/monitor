@@ -112,7 +112,11 @@ def parse_job_state(squeue_output):
         if not line or "JOBID" in line:
             continue
 
-        job_id, state, name, time_running, time_left, submit_time = line.split()
+        try:
+            job_id, state, name, time_running, time_left, submit_time = line.split()
+        except:
+            raise ValueError(f"unable to parse line: {line}")
+
         time_running_seconds = parse_time(time_running)
         time_left_seconds = parse_time(time_left)
         # parse submit_time and calculate number of seconds since that time
@@ -150,7 +154,7 @@ def get_queue_days(queue="standard-g"):
         return "inf"
 
 
-    command = f"squeue -p {queue} -o '%D %l %T %R'"
+    command = f"squeue -p {queue} -o '%D %b %l %T %R'"
     status, output = subprocess.getstatusoutput(command)
     if status != 0:
         raise subprocess.CalledProcessError(status, command, output)
@@ -161,8 +165,14 @@ def get_queue_days(queue="standard-g"):
         if '(Priority)' not in line and 'RUNNING' not in line:
             continue
 
-        (nodes, time_left, _, _) = line.split(" ")
-        nodes = int(nodes)
+
+        (nodes, gres, time_left, _, _) = line.split(" ")
+        gpus = 8
+        m = re.search("gres:gpu:(\d+)", gres)
+        if m:
+            gpus = int(m.group(1))
+
+        nodes = int(nodes) * gpus / 8.0
         days = parse_time(time_left) / 86400
         node_days += nodes * days
 
