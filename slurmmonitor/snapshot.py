@@ -2,7 +2,7 @@ import os
 import collections
 import slurm
 
-from slurmmonitor.config import job_config, free_bytes_config, free_inodes_config, users
+from slurmmonitor.config import job_config, free_bytes_config, free_inodes_config, slurm_partitions, users
 
 
 def get_free_bytes(path):
@@ -23,7 +23,7 @@ class ClusterDataSnapshot:
         self.free_inodes = {path: get_free_inodes(path) for path in free_inodes_config}
         self.free_bytes = {path: get_free_bytes(path) for path in free_bytes_config}
 
-        self.queue_days = {"standard-g": slurm.util.get_queue_days("standard-g")}
+        self.queue_days = {partition: slurm.util.get_queue_days(partition) for partition in slurm_partitions}
     
     def _get_job_status(self, job_config, users):
         jobs = {}
