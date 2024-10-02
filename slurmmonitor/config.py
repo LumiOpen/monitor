@@ -42,14 +42,14 @@ class Job:
         return self.name
 
 job_config = [
-    Job("viking_v2_33B_high_eps",
-        logfile='/scratch/project_462000319/production/logs-33B_high_eps/latest.out',
-        latest='/scratch/project_462000086/viking-v2/33B_high_eps/latest_checkpointed_iteration.txt',
-        total=476837,
+    Job("europa_33B",
+        logfile='/scratch/project_462000353/europa-production/logs-33B/latest.out',
+        latest='/scratch/project_462000353/europa-checkpoints/33B_checkpoints/latest_checkpointed_iteration.txt',
+        total=572204,
     ),
-    Job("v3-train-1024N-70B",
-        logfile='/scratch/project_462000353/europa-production/logs/latest_1024N.out',
-        latest='/scratch/project_462000353/europa-checkpoints/1024N-lr-fixed/latest_checkpointed_iteration.txt',
+    Job("7B_europa_64",
+        logfile='/scratch/project_462000353/europa-production/logs-7B/latest.out',
+        latest='/scratch/project_462000353/europa-checkpoints/7B_checkpoints/latest_checkpointed_iteration.txt',
         total=572204,
     ),
         
@@ -63,8 +63,6 @@ users = [
 ]
 
 free_bytes_config = {
-    "/flash/project_462000319": 10e12,
-    "/scratch/project_462000319": 10e12,
     "/flash/project_462000086": 1e12,
     "/scratch/project_462000086": 10e12,
     "/flash/project_462000444": 1e12,
@@ -79,3 +77,8 @@ free_inodes_config = {
     "/scratch/project_462000444": 1e5,
     "/flash/project_462000444": 1e5,
 }
+
+slurm_partitions = [
+    "standard-g",
+    "small-g"
+]
