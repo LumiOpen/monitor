@@ -1,15 +1,21 @@
 import os 
 import collections
+import logging
 import slurm
+
+logger = logging.getLogger(__name__)
+
 
 from slurmmonitor.config import job_config, free_bytes_config, free_inodes_config, slurm_partitions, users
 
 
 def get_free_bytes(path):
+    logger.debug(f"running statvfs: {path}")
     stats = os.statvfs(path)
     return stats.f_bfree * stats.f_frsize
 
 def get_free_inodes(path):
+    logger.debug(f"running statvfs: {path}")
     stats = os.statvfs(path)
     return stats.f_ffree
 
@@ -52,6 +58,7 @@ class ClusterDataSnapshot:
             # check if job is stalled (only running jobs can be stalled!)
             if job.running and configs[job.name].stalled():
                 jobs_stalled[job.name] = True
+        logger.debug(f"ClusterDataSnapshot: {jobs=}, {jobs_running_count=}, {jobs_stalled=}")
 
         return jobs, jobs_running_count, jobs_stalled
 

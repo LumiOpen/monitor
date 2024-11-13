@@ -91,6 +91,8 @@ def check_job_status(job_config, cluster_state, prev_cluster_state):
                 
             # Stall Check
             if current_job.running:
+                # TODO there is a bug here. if a job is not running it can be
+                # reported as stalled.
                 # TODO stall check actually is handled via job_config job entry which is confusing.
                 topic = f"job_stalled {job.name}"
                 if job.stalled():

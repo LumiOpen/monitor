@@ -42,11 +42,6 @@ class Job:
         return self.name
 
 job_config = [
-    Job("europa_33B",
-        logfile='/scratch/project_462000353/europa-production/logs-33B/latest.out',
-        latest='/scratch/project_462000353/europa-checkpoints/33B_checkpoints/latest_checkpointed_iteration.txt',
-        total=572204,
-    ),
     Job("7B_europa_64",
         logfile='/scratch/project_462000353/europa-production/logs-7B/latest.out',
         latest='/scratch/project_462000353/europa-checkpoints/7B_checkpoints/latest_checkpointed_iteration.txt',
@@ -63,17 +58,15 @@ users = [
 ]
 
 free_bytes_config = {
-    "/flash/project_462000086": 1e12,
-    "/scratch/project_462000086": 10e12,
+    "/flash/project_462000353": 1e12,
+    "/scratch/project_462000353": 10e12,
     "/flash/project_462000444": 1e12,
     "/scratch/project_462000444": 10e12,
 }
 
 free_inodes_config = {
-    "/flash/project_462000319": 1e5,
-    "/scratch/project_462000319": 1e5,
-    "/scratch/project_462000086": 1e5,
-    "/flash/project_462000086": 1e5,
+    "/scratch/project_462000353": 1e5,
+    "/flash/project_462000353": 1e5,
     "/scratch/project_462000444": 1e5,
     "/flash/project_462000444": 1e5,
 }

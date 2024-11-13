@@ -2,7 +2,9 @@ import re
 import subprocess
 from datetime import datetime
 from pydantic import BaseModel, validator
+import logging
 
+logger = logging.getLogger(__name__)
 
 
 STATUS_RUNNING = [
@@ -90,6 +92,15 @@ class JobState(BaseModel):
     def check_pending(cls, v, values):
         return values.get('state') in STATUS_PENDING
 
+def run_or_raise(command):
+    logger.debug(f"Running: {command}")
+    status, output = subprocess.getstatusoutput(command)
+    if status != 0:
+        raise subprocess.CalledProcessError(status, command, output)
+    logger.debug(f"Command returned {status}")
+
+    return output
+    
 
 # squeue -o '%i %T %j %M %L %V'
 #JOBID STATE NAME TIME TIME_LEFT SUBMIT_TIME
@@ -99,16 +110,14 @@ class JobState(BaseModel):
 # 4958565 RUNNING pretrain_33B_128_node.sh 1-00:54:19 23:05:41 2023-11-20T06:34:00
 def get_job_state(users):
     command = 'squeue -o "%i %T %j %M %L %V" -u ' + ",".join(users)
-    status, output = subprocess.getstatusoutput(command)
-    if status != 0:
-        raise subprocess.CalledProcessError(status, command, output)
-    
+    output = run_or_raise(command)
     return parse_job_state(output)
 
 def parse_job_state(squeue_output):
     job_states = []
     output_lines = squeue_output.split('\n')
     for line in output_lines:
+        logger.debug(f"parse_job_state: {line}")
         if not line or "JOBID" in line:
             continue
 
@@ -141,9 +150,7 @@ def parse_job_state(squeue_output):
 # scheduled with a dependency
 def get_queue_days(queue="standard-g"):
     command = f"scontrol show partition {queue}"
-    status, output = subprocess.getstatusoutput(command)
-    if status != 0:
-        raise subprocess.CalledProcessError(status, command, output)
+    output = run_or_raise(command)
 
     m = re.search(r"TotalNodes=(\d+)", output)
     if m:
@@ -155,9 +162,7 @@ def get_queue_days(queue="standard-g"):
 
 
     command = f"squeue -p {queue} -o '%D %b %l %T %R'"
-    status, output = subprocess.getstatusoutput(command)
-    if status != 0:
-        raise subprocess.CalledProcessError(status, command, output)
+    output = run_or_raise(command)
 
     node_days = 0
     for line in output.split("\n"):

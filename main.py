@@ -1,5 +1,7 @@
+import argparse
 import datetime
 import json
+import logging
 import os
 import requests
 import time
@@ -24,7 +26,19 @@ def post_msg(message):
     if response.status_code != 200:
         print(f"Error posting to slack: {response.status_code}, {response.text}")
 
-def main():
+def setup_logging(debug):
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+
+    logger.handlers = []
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.DEBUG if debug else logging.INFO)
+    logger.addHandler(console_handler)
+
+
+def main(args):
+    setup_logging(args.debug)
+
     message_tracker = MessageTracker()
 
     last_time = datetime.datetime.now()
@@ -77,4 +91,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--debug', action='store_true', help='Enable debug logging')
+    args = parser.parse_args()
+    
+    main(args)
