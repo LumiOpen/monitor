@@ -1,7 +1,7 @@
 import os 
 import collections
 import logging
-import slurm
+from slurmmonitor.slurm import util
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class ClusterDataSnapshot:
         self.free_inodes = {path: get_free_inodes(path) for path in free_inodes_config}
         self.free_bytes = {path: get_free_bytes(path) for path in free_bytes_config}
 
-        self.queue_days = {partition: slurm.util.get_queue_days(partition) for partition in slurm_partitions}
+        self.queue_days = {partition: util.get_queue_days(partition) for partition in slurm_partitions}
     
     def _get_job_status(self, job_config, users):
         jobs = {}
@@ -38,7 +38,7 @@ class ClusterDataSnapshot:
 
         configs = {job.name: job for job in job_config}
 
-        for job in slurm.util.get_job_state(users):
+        for job in util.get_job_state(users):
             # check for only the job names we're interested in.
             if job.name not in configs.keys():
                 continue

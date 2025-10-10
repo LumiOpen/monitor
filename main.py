@@ -7,9 +7,10 @@ import requests
 import time
 
 from slurmmonitor.checks import check_job_status, check_free_inodes, check_free_bytes, check_queue_days
-from slurmmonitor.config import job_config, free_bytes_config, free_inodes_config
+from slurmmonitor.config import job_config, free_bytes_config, free_inodes_config, gpu_quota_projects
 from slurmmonitor.snapshot import ClusterDataSnapshot
 from slurmmonitor.message import MessageTracker
+from slurmmonitor.quota import compute_gpu_quota_messages
 
 from dotenv import load_dotenv
 
@@ -67,6 +68,16 @@ def main(args):
             if out_message is not None:
                 out_messages.append(out_message)
         out_message = "\n".join([str(i) for i in out_messages])
+        # Include GPU quota in first loop output to aid local runs
+        if first_run:
+            try:
+                quota_lines = compute_gpu_quota_messages(gpu_quota_projects)
+                if quota_lines:
+                    if out_message:
+                        out_message += "\n"
+                    out_message += "\n".join(quota_lines)
+            except Exception as e:
+                print(f"Error computing GPU quota messages: {e}")
         if out_message:
             if first_run:
                 first_run = False
@@ -84,6 +95,16 @@ def main(args):
         if last_time.hour == 8 and current_time.hour == 9:
             active_messages = message_tracker.get_active_messages()
             daily_message = "\n".join([str(i) for i in active_messages])
+
+            # Append GPU quota status (daily only)
+            try:
+                quota_lines = compute_gpu_quota_messages(gpu_quota_projects)
+                if quota_lines:
+                    if daily_message:
+                        daily_message += "\n"
+                    daily_message += "\n".join(quota_lines)
+            except Exception as e:
+                print(f"Error computing GPU quota messages: {e}")
             post_msg("Daily Status:\n" + daily_message)
         last_time = current_time
 

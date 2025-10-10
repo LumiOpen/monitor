@@ -1,4 +1,4 @@
-from slurm.util import parse_time, parse_job_state
+from slurmmonitor.slurm.util import parse_time, parse_job_state
 
 def test_parse_time_left():
     assert parse_time('1-00:00:00') == 86400

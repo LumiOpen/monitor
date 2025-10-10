@@ -77,3 +77,13 @@ slurm_partitions = [
     "standard-g",
     "small-g"
 ]
+
+# Projects to track for GPU quota usage. Keys must match the project names
+# reported by `lumi-allocations` (e.g., 'project_462000963'). Dates are ISO
+# formatted (YYYY-MM-DD). Only included in the morning daily output.
+gpu_quota_projects = {
+    "project_462000963": {
+        "start": "2025-05-22",
+        "end": "2026-05-31",
+    },
+}
