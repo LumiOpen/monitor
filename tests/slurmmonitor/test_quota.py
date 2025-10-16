@@ -40,7 +40,7 @@ def test_quota_message_no_stale(monkeypatch):
     assert len(lines) == 1
     line = lines[0]
     assert "project_462000963" in line
-    assert "used 125,563/1,500,000 GPUh (8.4%)" in line
+    assert "used 125.6K/1500.0K GPUh (8.4%)" in line
     assert "100 days remain" in line
     assert "stale" not in line
 
@@ -81,7 +81,7 @@ def test_quota_message_with_stale(monkeypatch):
     assert len(lines) == 1
     line = lines[0]
     assert "project_462000963" in line
-    assert "used 125,563/1,500,000 GPUh (8.4%)" in line
+    assert "used 125.6K/1500.0K GPUh (8.4%)" in line
     assert "100 days remain" in line
     assert "stale (48h old)" in line
 
