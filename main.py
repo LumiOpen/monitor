@@ -10,7 +10,7 @@ from slurmmonitor.checks import check_job_status, check_free_inodes, check_free_
 from slurmmonitor.config import job_config, free_bytes_config, free_inodes_config, gpu_quota_projects
 from slurmmonitor.snapshot import ClusterDataSnapshot
 from slurmmonitor.message import MessageTracker
-from slurmmonitor.quota import compute_gpu_quota_messages
+from slurmmonitor.quota import compute_gpu_quota_messages, get_weekly_gpu_hours_by_user
 
 from dotenv import load_dotenv
 
@@ -78,6 +78,19 @@ def main(args):
                     out_message += "\n".join(quota_lines)
             except Exception as e:
                 print(f"Error computing GPU quota messages: {e}")
+            try:
+                projects = list(gpu_quota_projects.keys())
+                weekly_by_user = get_weekly_gpu_hours_by_user(projects)
+                if weekly_by_user:
+                    print("Weekly GPU usage by user (last 7d):")
+                    for project, by_user in weekly_by_user.items():
+                        if not by_user:
+                            continue
+                        print(f"{project}:")
+                        for username, hours in sorted(by_user.items(), key=lambda kv: kv[1], reverse=True):
+                            print(f"  {username}: {hours} GPUh")
+            except Exception as e:
+                print(f"Error computing weekly per-user GPU usage: {e}")
         if out_message:
             if first_run:
                 first_run = False
@@ -106,6 +119,21 @@ def main(args):
             except Exception as e:
                 print(f"Error computing GPU quota messages: {e}")
             post_msg("Daily Status:\n" + daily_message)
+
+            # Also log (stdout only) a per-user GPU usage breakdown for last 7 days
+            try:
+                projects = list(gpu_quota_projects.keys())
+                weekly_by_user = get_weekly_gpu_hours_by_user(projects)
+                if weekly_by_user:
+                    print("Weekly GPU usage by user (last 7d):")
+                    for project, by_user in weekly_by_user.items():
+                        if not by_user:
+                            continue
+                        print(f"{project}:")
+                        for username, hours in sorted(by_user.items(), key=lambda kv: kv[1], reverse=True):
+                            print(f"  {username}: {hours} GPUh")
+            except Exception as e:
+                print(f"Error computing weekly per-user GPU usage: {e}")
         last_time = current_time
 
         time.sleep(60)

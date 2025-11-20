@@ -103,6 +103,55 @@ def get_weekly_gpu_hours_by_project(projects: list[str]) -> dict[str, int]:
     return {k: int(round(v)) for k, v in totals.items()}
 
 
+def get_weekly_gpu_hours_by_user(projects: list[str]) -> dict[str, dict[str, int]]:
+    """Return per-user GPU-hours in the last 7 days for each project.
+
+    Uses sacct to gather elapsed time and allocated GPUs, then computes
+    GPU-hours as ElapsedHours * GPUCount / 2 (LUMI MI250X has 2 GCDs).
+
+    Returns:
+        A dict mapping project -> { user -> GPU-hours (int, rounded) }
+    """
+    if not projects:
+        return {}
+
+    now = datetime.now()
+    start_dt = now - timedelta(days=7)
+    start_s = start_dt.strftime("%Y-%m-%dT%H:%M:%S")
+    end_s = now.strftime("%Y-%m-%dT%H:%M:%S")
+
+    cmd = (
+        f"sacct -a -A {','.join(projects)} --starttime {start_s} --endtime {end_s} "
+        "--format Account,User,Elapsed,AllocTRES,Start -P"
+    )
+    out = run_or_raise(cmd)
+
+    totals: dict[str, dict[str, float]] = {}
+    for line in out.splitlines():
+        if not line or line.startswith("Account|"):
+            continue
+        parts = line.split("|")
+        if len(parts) < 4:
+            continue
+        account = parts[0].strip()
+        user = parts[1].strip()
+        elapsed = parts[2].strip()
+        alloc_tres = parts[3].strip()
+        if not account or not user:
+            continue
+
+        gpus = _gpu_count_from_tres(alloc_tres)
+        if gpus <= 0:
+            continue
+        hours = _elapsed_to_hours(elapsed)
+        gpu_hours = hours * (gpus / 2.0)
+        by_user = totals.setdefault(account, {})
+        by_user[user] = by_user.get(user, 0.0) + gpu_hours
+
+    # Round to nearest integer GPUh for reporting
+    return {proj: {u: int(round(v)) for u, v in by_user.items()} for proj, by_user in totals.items()}
+
+
 def compute_gpu_quota_messages(projects_cfg: dict):
     """Compute daily GPU quota status lines for the provided projects.
 
