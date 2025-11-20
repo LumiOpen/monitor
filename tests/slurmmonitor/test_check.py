@@ -42,13 +42,13 @@ def test_check_free_bytes():
     
     assert len(messages) == 2
     assert messages[0].topic == "free_bytes /path1"
-    assert messages[0].text == "Sufficient free space on /path1"
-    assert messages[0].details == "100 > 80"
+    assert messages[0].text == "✅ Sufficient free space on /path1"
+    assert messages[0].details == "100 B > 80 B"
     assert not messages[0].active
     
     assert messages[1].topic == "free_bytes /path2"
-    assert messages[1].text == "Not enough free space on /path2"
-    assert messages[1].details == "50 < 60"
+    assert messages[1].text == "⚠️ Not enough free space on /path2"
+    assert messages[1].details == "50 B < 60 B"
     assert messages[1].active
 
 def test_check_free_inodes():
@@ -68,12 +68,12 @@ def test_check_free_inodes():
     
     assert len(messages) == 2
     assert messages[0].topic == "free_inodes /path1"
-    assert messages[0].text == "Sufficient free inodes on /path1"
-    assert messages[0].details == "1000 > 800"
+    assert messages[0].text == "✅ Sufficient free inodes on /path1"
+    assert messages[0].details == "1.0K > 0.8K"
     assert not messages[0].active
     
     assert messages[1].topic == "free_inodes /path2"
-    assert messages[1].text == "Not enough free inodes on /path2"
+    assert messages[1].text == "⚠️ Not enough free inodes on /path2"
     assert messages[1].details == "500 < 600"
     assert messages[1].active
 

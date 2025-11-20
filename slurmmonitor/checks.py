@@ -1,21 +1,62 @@
 from slurmmonitor.message import Message
 
+
+def _format_bytes_pair(value, threshold, op):
+    max_val = max(float(value), float(threshold))
+    units = ["B", "KB", "MB", "GB", "TB", "PB"]
+    unit_index = 0
+    while max_val >= 1000 and unit_index < len(units) - 1:
+        max_val /= 1000.0
+        unit_index += 1
+    divisor = 1000 ** unit_index
+
+    if unit_index == 0:
+        value_str = f"{int(value)} B"
+        threshold_str = f"{int(threshold)} B"
+    else:
+        value_str = f"{value / divisor:.1f} {units[unit_index]}"
+        threshold_str = f"{threshold / divisor:.1f} {units[unit_index]}"
+
+    return f"{value_str} {op} {threshold_str}"
+
+
+def _format_count_pair(value, threshold, op):
+    max_val = max(float(value), float(threshold))
+    units = ["", "K", "M", "B"]
+    unit_index = 0
+    while max_val >= 1000 and unit_index < len(units) - 1:
+        max_val /= 1000.0
+        unit_index += 1
+    divisor = 1000 ** unit_index
+
+    if unit_index == 0:
+        value_str = f"{int(value)}"
+        threshold_str = f"{int(threshold)}"
+    else:
+        value_str = f"{value / divisor:.1f}{units[unit_index]}"
+        threshold_str = f"{threshold / divisor:.1f}{units[unit_index]}"
+
+    return f"{value_str} {op} {threshold_str}"
+
+
 def check_free_bytes(free_bytes_config, cluster_state):
     messages = []
     for path, threshold in free_bytes_config.items():
         topic = f"free_bytes {path}"
         free_bytes = cluster_state.free_bytes[path]
         if free_bytes < threshold:
+            details = _format_bytes_pair(free_bytes, threshold, "<")
             messages.append(Message(
                 topic,
-                f"Not enough free space on {path}",
-                f"{free_bytes} < {threshold}",
+                f"⚠️ Not enough free space on {path}",
+                details,
             ))
         else:
+            details = _format_bytes_pair(free_bytes, threshold, ">")
             messages.append(Message(
                 topic,
-                f"Sufficient free space on {path}",
-                f"{free_bytes} > {threshold}",
+                f"✅ Sufficient free space on {path}",
+                details,
                 active=False,
             ))
     return messages
@@ -27,16 +68,18 @@ def check_free_inodes(free_inodes_config, cluster_state):
         topic = f"free_inodes {path}"
         free_inodes = cluster_state.free_inodes[path]
         if free_inodes < threshold:
+            details = _format_count_pair(free_inodes, threshold, "<")
             messages.append(Message(
                 topic,
-                f"Not enough free inodes on {path}",
-                f"{free_inodes} < {threshold}",
+                f"⚠️ Not enough free inodes on {path}",
+                details,
             ))
         else:
+            details = _format_count_pair(free_inodes, threshold, ">")
             messages.append(Message(
                 topic,
-                f"Sufficient free inodes on {path}",
-                f"{free_inodes} > {threshold}",
+                f"✅ Sufficient free inodes on {path}",
+                details,
                 active=False,
             ))
     return messages
