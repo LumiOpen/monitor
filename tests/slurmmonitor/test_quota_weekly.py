@@ -48,7 +48,7 @@ def test_quota_weekly_target_and_eta(monkeypatch):
     assert "used 172.2K/1500.0K GPUh (11.5%)" in line
 
     # Weekly usage and percent of target
-    assert "last 7d 70.2K GPUh (171% of 40.9K GPUh target)" in line
+    assert "last 7d 70.2K GPUh (171% 🥵 of 40.9K GPUh target)" in line
 
     # Target 7d to finish on time and ETA
     assert "ETA ~132d/227d" in line

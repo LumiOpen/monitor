@@ -27,6 +27,19 @@ def _pct(x: float) -> str:
 def _human_int(n: int) -> str:
     return f"{n:,}"
 
+
+def _target_ratio_emoji(ratio_pct: float) -> str:
+    """Return an emoji summarizing how weekly burn compares to target."""
+    if ratio_pct < 80:
+        return "🥶"
+    if ratio_pct < 90:
+        return "😌"
+    if ratio_pct < 110:
+        return "🙂"
+    if ratio_pct < 120:
+        return "😯"
+    return "🥵"
+
 def _human_k(n: int) -> str:
     """Format an integer as thousands with one decimal and 'K' suffix.
 
@@ -241,9 +254,10 @@ def compute_gpu_quota_messages(projects_cfg: dict):
 
             if target_week and target_week > 0:
                 target_ratio_pct = (weekly_val / target_week) * 100.0
+                ratio_emoji = _target_ratio_emoji(target_ratio_pct)
                 msg += (
                     f", last 7d {_human_k(weekly_val)} GPUh "
-                    f"({target_ratio_pct:.0f}% of {_human_k(target_week)} GPUh target)"
+                    f"({target_ratio_pct:.0f}% {ratio_emoji} of {_human_k(target_week)} GPUh target)"
                 )
             else:
                 msg += f", last 7d {_human_k(weekly_val)} GPUh"
