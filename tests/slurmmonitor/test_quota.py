@@ -25,6 +25,7 @@ def test_quota_message_no_stale(monkeypatch):
 
     # Monkeypatch getter to avoid shell call
     monkeypatch.setattr("slurmmonitor.quota.get_lumi_allocations", fake_get_lumi_allocations)
+    monkeypatch.setattr("slurmmonitor.quota.get_weekly_gpu_hours_by_project", lambda projects: {})
 
     cfg = {
         "project_462000963": {
@@ -41,7 +42,8 @@ def test_quota_message_no_stale(monkeypatch):
     line = lines[0]
     assert "project_462000963" in line
     assert "used 125.6K/1500.0K GPUh (8.4%)" in line
-    assert "100 days remain" in line
+    assert "days remain" not in line
+    assert "last 7d" not in line
     assert "stale" not in line
 
 
@@ -66,6 +68,7 @@ def test_quota_message_with_stale(monkeypatch):
         }
 
     monkeypatch.setattr("slurmmonitor.quota.get_lumi_allocations", fake_get_lumi_allocations)
+    monkeypatch.setattr("slurmmonitor.quota.get_weekly_gpu_hours_by_project", lambda projects: {})
 
     cfg = {
         "project_462000963": {
@@ -82,7 +85,8 @@ def test_quota_message_with_stale(monkeypatch):
     line = lines[0]
     assert "project_462000963" in line
     assert "used 125.6K/1500.0K GPUh (8.4%)" in line
-    assert "100 days remain" in line
+    assert "days remain" not in line
+    assert "last 7d" not in line
     assert "stale (48h old)" in line
 
 

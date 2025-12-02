@@ -46,13 +46,11 @@ def test_quota_weekly_target_and_eta(monkeypatch):
 
     # Base used/alloc and remaining days
     assert "used 172.2K/1500.0K GPUh (11.5%)" in line
-    assert "227 days remain" in line
 
-    # Weekly usage and percent of allocation
-    assert "last 7d 70.2K GPUh (4.7%)" in line
+    # Weekly usage and percent of target
+    assert "last 7d 70.2K GPUh (171% of 40.9K GPUh target)" in line
 
     # Target 7d to finish on time and ETA
-    assert "target 7d 40.9K GPUh" in line
     assert "ETA ~132d/227d" in line
 
 
@@ -153,4 +151,3 @@ def test_quota_weekly_sacct_failure(monkeypatch):
     assert "last 7d" not in line
     assert "target 7d" not in line
     assert "ETA ~" not in line
-

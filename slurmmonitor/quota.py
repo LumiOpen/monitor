@@ -226,28 +226,32 @@ def compute_gpu_quota_messages(projects_cfg: dict):
         # Days remaining until end (clamped to [0, total_days])
         days_remaining = int((end - now_for_trend).total_seconds() // 86400)
 
+        remaining = max(allocated - used, 0)
+
         msg = (
             f"GPU quota {project}: used {_human_k(used)}/{_human_k(allocated)} GPUh "
-            f"({_pct(used_pct)}), {days_remaining} days remain"
+            f"({_pct(used_pct)})"
         )
 
         weekly_val = weekly_by_project.get(project)
         if weekly_val is not None:
-            weekly_pct = weekly_val / allocated * 100.0
-            msg += f", last 7d {_human_k(weekly_val)} GPUh ({_pct(weekly_pct)})"
-
-            # Show target 7d consumption to finish on time and ETA at current pace
-            remaining = max(allocated - used, 0)
+            target_week = None
             if days_remaining > 0 and remaining > 0:
                 target_week = (remaining / days_remaining) * 7.0
-                msg += f", target 7d {_human_k(target_week)} GPUh"
 
+            if target_week and target_week > 0:
+                target_ratio_pct = (weekly_val / target_week) * 100.0
+                msg += (
+                    f", last 7d {_human_k(weekly_val)} GPUh "
+                    f"({target_ratio_pct:.0f}% of {_human_k(target_week)} GPUh target)"
+                )
+            else:
+                msg += f", last 7d {_human_k(weekly_val)} GPUh"
             if weekly_val > 0 and remaining > 0:
                 daily_rate = weekly_val / 7.0
                 eta_days = int(round(remaining / daily_rate)) if daily_rate > 0 else None
                 if eta_days is not None and days_remaining > 0:
                     msg += f", ETA ~{eta_days}d/{days_remaining}d"
-
         if updated_at:
             age = now_real - updated_at
             if age > timedelta(hours=24):
