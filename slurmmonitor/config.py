@@ -57,18 +57,12 @@ users = [
     'avirtanen',
 ]
 
-# 462000353(project_462000353),462000615(project_462000615),462000963(project_462000963)
 free_bytes_config = {
-    # XXX temporary disable flash querying due to availability issues
-    "/flash/project_462000353": 1e12,
-    "/scratch/project_462000353": 10e12,
     "/flash/project_462000963": 1e12,
     "/scratch/project_462000963": 10e12,
 }
 
 free_inodes_config = {
-    "/scratch/project_462000353": 1e5,
-    "/flash/project_462000353": 1e5,
     "/scratch/project_462000963": 1e5,
     "/flash/project_462000963": 1e5,
 }
