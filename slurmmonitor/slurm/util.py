@@ -45,16 +45,19 @@ STATUS_NOT_RUNNING = [
 
 def parse_time(time_str):
     """Parses the time left string from squeue and converts it to seconds"""
+    if time_str in {"INVALID", "N/A", "UNLIMITED", "NOT_SET"}:
+        return 0
+
     days = 0
-    parts = time_str.split('-')
+    parts = re.split(r"[-+]", time_str, maxsplit=1)
     if len(parts) == 2:
         days = int(parts[0])
         time_str = parts[1]
 
     try:
         segments = [int(i) for i in time_str.split(':')]
-    except:
-        print(f"Couldn't parse time: {time_str}")
+    except ValueError:
+        logger.warning(f"Couldn't parse time: {time_str}")
         return 0
 
     if len(segments) == 3:
@@ -66,6 +69,23 @@ def parse_time(time_str):
         raise ValueError(f"Couldn't parse '{time_str}'")
     total_seconds = days * 86400 + hours * 3600 + minutes * 60 + seconds
     return total_seconds
+
+
+def parse_gres_gpu_count(gres):
+    if gres == "N/A":
+        return 8
+
+    for part in gres.split(","):
+        if "gpu" not in part:
+            continue
+
+        try:
+            return int(part.rsplit(":", 1)[1])
+        except (IndexError, ValueError):
+            logger.warning(f"Couldn't parse gpu count: {gres}")
+            return 8
+
+    return 8
 
 class JobState(BaseModel):
     job_id: int
@@ -171,11 +191,8 @@ def get_queue_days(queue="standard-g"):
             continue
 
 
-        (nodes, gres, time_left, _, _) = line.split(" ")
-        gpus = 8
-        m = re.search("gres:gpu:(\d+)", gres)
-        if m:
-            gpus = int(m.group(1))
+        (nodes, gres, time_left, _, _) = line.split(maxsplit=4)
+        gpus = parse_gres_gpu_count(gres)
 
         nodes = int(nodes) * gpus / 8.0
         days = parse_time(time_left) / 86400
