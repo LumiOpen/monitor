@@ -74,10 +74,41 @@ slurm_partitions = [
 
 # Projects to track for GPU quota usage. Keys must match the project names
 # reported by `lumi-allocations` (e.g., 'project_462000963'). Dates are ISO
-# formatted (YYYY-MM-DD). Only included in the morning daily output.
+# formatted (YYYY-MM-DD). Optional milestone tracks an intermediate spend goal
+# until its date passes.
 gpu_quota_projects = {
     "project_462000963": {
         "start": "2025-05-22",
         "end": "2026-05-31",
+        # "milestone": {
+        #     "name": "retention checkpoint",
+        #     "date": "2026-02-01",
+        #     "target_pct": 50.0,
+        # },
+    },
+    "project_465002530": {
+        # End date is intentionally omitted until confirmed; this avoids
+        # reporting a misleading overall burn-down trajectory.
+        "start": "2026-05-29",
+        "milestone": {
+            "name": "resource cut checkpoint",
+            "kind": "protect",
+            "date": "2026-08-02",
+            "target_pct": 40.0,
+        },
+    },
+    "project_462001516": {
+        # Assumed allocation period; confirm once lumi-allocations exposes it.
+        "start": "2026-05-29",
+        "end": "2027-05-31",
+        "milestone": {
+            "name": "second-half allocation checkpoint",
+            "kind": "unlock",
+            # The review is described as "late October"; use Oct 31 until a
+            # more specific date is known.
+            "date": "2026-10-31",
+            "target_mode": "linear",
+            "target_base_gpuh": 2_000_000,
+        },
     },
 }

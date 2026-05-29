@@ -46,6 +46,127 @@ def _human_k(n: int) -> str:
     Example: 172100 -> '172.1K'. No comma separators.
     """
     return f"{(n/1000.0):.1f}K"
+
+
+def _configured_milestones(cfg: dict) -> list[dict]:
+    if "milestones" in cfg:
+        milestones = cfg.get("milestones") or []
+        if isinstance(milestones, dict):
+            return [milestones]
+        return list(milestones)
+
+    milestone = cfg.get("milestone")
+    if milestone:
+        return [milestone]
+    return []
+
+
+def _select_milestone(cfg: dict, baseline: datetime, used: int, allocated: int):
+    candidates = []
+    for milestone in _configured_milestones(cfg):
+        target_mode = milestone.get("target_mode", milestone.get("target"))
+        target_pct = milestone.get("target_pct", milestone.get("target_percent"))
+        target_gpuh = milestone.get("target_gpuh")
+        target_base_gpuh = milestone.get("target_base_gpuh", allocated)
+        milestone_date = _parse_date(milestone["date"])
+        deadline = datetime.combine(milestone_date.date(), baseline.time())
+        if baseline >= deadline:
+            continue
+
+        if target_mode == "linear":
+            if not cfg.get("end"):
+                raise ValueError("linear milestone requires project end")
+            start_date = _parse_date(cfg["start"])
+            end_date = _parse_date(cfg["end"])
+            start = datetime.combine(start_date.date(), baseline.time())
+            end = datetime.combine(end_date.date(), baseline.time())
+            total_seconds = (end - start).total_seconds()
+            if total_seconds <= 0:
+                raise ValueError("project end must be after start for linear milestone")
+            elapsed_seconds = (_clamp(deadline, start, end) - start).total_seconds()
+            target_ratio = elapsed_seconds / total_seconds
+            target_used = float(target_base_gpuh) * target_ratio
+            target_label = f"linear {_pct(target_ratio * 100.0)}"
+        elif target_pct is not None:
+            target_pct = float(target_pct)
+            if target_pct < 0 or target_pct > 100:
+                raise ValueError("milestone target_pct must be between 0 and 100")
+            target_used = float(target_base_gpuh) * target_pct / 100.0
+            target_label = _pct(target_pct)
+        else:
+            if target_gpuh is None:
+                raise ValueError("milestone missing target_pct or target_gpuh")
+            target_used = float(target_gpuh)
+            if target_used < 0:
+                raise ValueError("milestone target_gpuh must be non-negative")
+            target_label = None
+
+        candidates.append({
+            "name": milestone.get("name") or "milestone",
+            "kind": milestone.get("kind"),
+            "date": milestone_date,
+            "deadline": deadline,
+            "target_label": target_label,
+            "target_used": target_used,
+        })
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda milestone: milestone["deadline"])
+    for milestone in candidates:
+        if used < milestone["target_used"]:
+            return milestone
+    return candidates[0]
+
+
+def _format_milestone_message(milestone: dict, used: int, weekly_val, baseline: datetime) -> str:
+    target_used = milestone["target_used"]
+    target_label = milestone["target_label"]
+    label = milestone["name"]
+    kind = milestone["kind"]
+    date_s = milestone["date"].strftime("%Y-%m-%d")
+    purpose = {
+        "protect": "cut-prevention",
+        "unlock": "bonus-unlock",
+    }.get(kind, "milestone")
+
+    msg = (
+        f"  {label} {date_s}: used {_human_k(used)}/{_human_k(target_used)} GPUh "
+        f"toward {purpose} target"
+    )
+    if target_label is not None:
+        msg += f" ({target_label})"
+    if used >= target_used:
+        return msg + " (met)"
+
+    days_remaining = int((milestone["deadline"] - baseline).total_seconds() // 86400)
+    remaining = target_used - used
+
+    if weekly_val is not None:
+        target_week = None
+        if days_remaining > 0 and remaining > 0:
+            target_week = (remaining / days_remaining) * 7.0
+
+        if target_week and target_week > 0:
+            target_ratio_pct = (weekly_val / target_week) * 100.0
+            ratio_emoji = _target_ratio_emoji(target_ratio_pct)
+            msg += (
+                f", last 7d {_human_k(weekly_val)} GPUh "
+                f"({target_ratio_pct:.0f}% {ratio_emoji} of {_human_k(target_week)} GPUh target)"
+            )
+        else:
+            msg += f", last 7d {_human_k(weekly_val)} GPUh"
+
+        if weekly_val > 0 and days_remaining > 0:
+            daily_rate = weekly_val / 7.0
+            eta_days = int(round(remaining / daily_rate)) if daily_rate > 0 else None
+            if eta_days is not None:
+                msg += f", ETA ~{eta_days}d/{days_remaining}d"
+
+    return msg
+
+
 def _elapsed_to_hours(time_str: str) -> float:
     """Convert Slurm elapsed time (D-HH:MM:SS or HH:MM:SS) to hours."""
     if not time_str:
@@ -193,7 +314,7 @@ def compute_gpu_quota_messages(projects_cfg: dict):
     for project, cfg in projects_cfg.items():
         try:
             start_date = _parse_date(cfg["start"])  # YYYY-MM-DD (date-only)
-            end_date = _parse_date(cfg["end"])      # YYYY-MM-DD (date-only)
+            end_date = _parse_date(cfg["end"]) if cfg.get("end") else None  # YYYY-MM-DD (date-only)
         except Exception as e:
             lines.append(f"GPU quota {project}: invalid start/end dates in config ({e})")
             continue
@@ -208,10 +329,10 @@ def compute_gpu_quota_messages(projects_cfg: dict):
         # Anchor start/end to the same time-of-day as the dataset timestamp (or now if missing)
         baseline = updated_at or now_real
         start = datetime.combine(start_date.date(), baseline.time())
-        end = datetime.combine(end_date.date(), baseline.time())
+        end = datetime.combine(end_date.date(), baseline.time()) if end_date else None
 
         # If the allocation period has ended, report and skip trend math.
-        if baseline >= end:
+        if end and baseline >= end:
             msg = f"GPU quota {project}: allocation period ended on {end_date.strftime('%Y-%m-%d')}"
             if updated_at:
                 age = now_real - updated_at
@@ -234,10 +355,9 @@ def compute_gpu_quota_messages(projects_cfg: dict):
         used_pct = used / allocated * 100.0
 
         # Use the lumi-allocations update timestamp as the effective "now" for trend.
-        now_for_trend = baseline
-        now_for_trend = _clamp(now_for_trend, start, end)
+        now_for_trend = _clamp(baseline, start, end) if end else max(baseline, start)
         # Days remaining until end (clamped to [0, total_days])
-        days_remaining = int((end - now_for_trend).total_seconds() // 86400)
+        days_remaining = int((end - now_for_trend).total_seconds() // 86400) if end else None
 
         remaining = max(allocated - used, 0)
 
@@ -249,7 +369,7 @@ def compute_gpu_quota_messages(projects_cfg: dict):
         weekly_val = weekly_by_project.get(project)
         if weekly_val is not None:
             target_week = None
-            if days_remaining > 0 and remaining > 0:
+            if days_remaining is not None and days_remaining > 0 and remaining > 0:
                 target_week = (remaining / days_remaining) * 7.0
 
             if target_week and target_week > 0:
@@ -264,7 +384,7 @@ def compute_gpu_quota_messages(projects_cfg: dict):
             if weekly_val > 0 and remaining > 0:
                 daily_rate = weekly_val / 7.0
                 eta_days = int(round(remaining / daily_rate)) if daily_rate > 0 else None
-                if eta_days is not None and days_remaining > 0:
+                if eta_days is not None and days_remaining is not None and days_remaining > 0:
                     msg += f", ETA ~{eta_days}d/{days_remaining}d"
         if updated_at:
             age = now_real - updated_at
@@ -273,5 +393,14 @@ def compute_gpu_quota_messages(projects_cfg: dict):
                 msg += f" [WARNING: lumi-allocations data stale ({hours}h old)]"
 
         lines.append(msg)
+
+        try:
+            milestone = _select_milestone(cfg, baseline, used, allocated)
+        except Exception as e:
+            lines.append(f"  milestone: invalid config ({e})")
+            continue
+
+        if milestone:
+            lines.append(_format_milestone_message(milestone, used, weekly_val, baseline))
 
     return lines
