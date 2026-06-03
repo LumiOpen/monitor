@@ -91,7 +91,7 @@ gpu_quota_projects = {
         # reporting a misleading overall burn-down trajectory.
         "start": "2026-05-29",
         "milestone": {
-            "name": "resource cut checkpoint",
+            "name": "cut checkpoint",
             "kind": "protect",
             "date": "2026-08-02",
             "target_pct": 40.0,
@@ -102,7 +102,7 @@ gpu_quota_projects = {
         "start": "2026-05-29",
         "end": "2027-05-31",
         "milestone": {
-            "name": "second-half allocation checkpoint",
+            "name": "bonus checkpoint",
             "kind": "unlock",
             # The review is described as "late October"; use Oct 31 until a
             # more specific date is known.

@@ -189,8 +189,8 @@ def test_quota_message_unmet_milestone(monkeypatch):
     assert len(lines) == 2
     assert "used 300.0K/1000.0K GPUh (30.0%)" in lines[0]
     assert (
-        "checkpoint 2026-01-31: used 300.0K/500.0K GPUh toward milestone target (50.0%), "
-        "last 7d 35.0K GPUh (75% 🥶 of 46.7K GPUh target), ETA ~40d/30d"
+        "checkpoint 2026-01-31: 300.0K/500.0K GPUh target (50.0%), "
+        "7d 35.0K/46.7K GPUh target (75% 🥶), ETA ~40d/30d"
     ) in lines[1]
 
 
@@ -226,7 +226,7 @@ def test_quota_message_met_milestone_still_reports_until_expired(monkeypatch):
     lines = compute_gpu_quota_messages(cfg)
 
     assert len(lines) == 2
-    assert "checkpoint 2026-01-31: used 550.0K/500.0K GPUh toward milestone target (50.0%) (met)" in lines[1]
+    assert "checkpoint 2026-01-31: 550.0K/500.0K GPUh target (50.0%) (met)" in lines[1]
 
 
 def test_quota_message_expired_milestone_is_hidden(monkeypatch):
@@ -344,7 +344,7 @@ def test_quota_message_protect_milestone_wording(monkeypatch):
     assert "last 7d 35.0K GPUh" in lines[0]
     assert "of " not in lines[0]
     assert "ETA ~" not in lines[0]
-    assert "resource cut checkpoint 2026-08-02: used 500.0K/700.0K GPUh toward cut-prevention target (40.0%)" in lines[1]
+    assert "resource cut checkpoint 2026-08-02: 500.0K/700.0K GPUh cut target (40.0%)" in lines[1]
 
 
 def test_quota_message_unknown_end_without_milestone(monkeypatch):
@@ -417,10 +417,14 @@ def test_quota_message_unlock_milestone_uses_target_base(monkeypatch):
 
     assert len(lines) == 2
     assert "used 400.0K/1000.0K GPUh (40.0%)" in lines[0]
+    assert "last 7d 70.0K GPUh" in lines[0]
+    assert "of " not in lines[0]
+    assert "ETA ~" not in lines[0]
     assert (
         "second-half allocation checkpoint 2026-10-31: "
-        "used 400.0K/844.7K GPUh toward bonus-unlock target (linear 42.2%)"
+        "400.0K/844.7K GPUh bonus target"
     ) in lines[1]
+    assert "linear" not in lines[1]
 
 
 def test_quota_message_absolute_milestone_target(monkeypatch):
@@ -456,5 +460,5 @@ def test_quota_message_absolute_milestone_target(monkeypatch):
     lines = compute_gpu_quota_messages(cfg)
 
     assert len(lines) == 2
-    assert "absolute checkpoint 2026-10-31: used 400.0K/1000.0K GPUh toward bonus-unlock target" in lines[1]
+    assert "absolute checkpoint 2026-10-31: 400.0K/1000.0K GPUh bonus target" in lines[1]
     assert "(50.0%)" not in lines[1]

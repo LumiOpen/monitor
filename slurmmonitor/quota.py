@@ -86,7 +86,7 @@ def _select_milestone(cfg: dict, baseline: datetime, used: int, allocated: int):
             elapsed_seconds = (_clamp(deadline, start, end) - start).total_seconds()
             target_ratio = elapsed_seconds / total_seconds
             target_used = float(target_base_gpuh) * target_ratio
-            target_label = f"linear {_pct(target_ratio * 100.0)}"
+            target_label = None
         elif target_pct is not None:
             target_pct = float(target_pct)
             if target_pct < 0 or target_pct > 100:
@@ -127,13 +127,13 @@ def _format_milestone_message(milestone: dict, used: int, weekly_val, baseline: 
     kind = milestone["kind"]
     date_s = milestone["date"].strftime("%Y-%m-%d")
     purpose = {
-        "protect": "cut-prevention",
-        "unlock": "bonus-unlock",
-    }.get(kind, "milestone")
+        "protect": "cut target",
+        "unlock": "bonus target",
+    }.get(kind, "target")
 
     msg = (
-        f"  {label} {date_s}: used {_human_k(used)}/{_human_k(target_used)} GPUh "
-        f"toward {purpose} target"
+        f"  {label} {date_s}: {_human_k(used)}/{_human_k(target_used)} GPUh "
+        f"{purpose}"
     )
     if target_label is not None:
         msg += f" ({target_label})"
@@ -152,11 +152,11 @@ def _format_milestone_message(milestone: dict, used: int, weekly_val, baseline: 
             target_ratio_pct = (weekly_val / target_week) * 100.0
             ratio_emoji = _target_ratio_emoji(target_ratio_pct)
             msg += (
-                f", last 7d {_human_k(weekly_val)} GPUh "
-                f"({target_ratio_pct:.0f}% {ratio_emoji} of {_human_k(target_week)} GPUh target)"
+                f", 7d {_human_k(weekly_val)}/{_human_k(target_week)} GPUh target "
+                f"({target_ratio_pct:.0f}% {ratio_emoji})"
             )
         else:
-            msg += f", last 7d {_human_k(weekly_val)} GPUh"
+            msg += f", 7d {_human_k(weekly_val)} GPUh"
 
         if weekly_val > 0 and days_remaining > 0:
             daily_rate = weekly_val / 7.0
@@ -360,6 +360,12 @@ def compute_gpu_quota_messages(projects_cfg: dict):
         days_remaining = int((end - now_for_trend).total_seconds() // 86400) if end else None
 
         remaining = max(allocated - used, 0)
+        milestone = None
+        milestone_error = None
+        try:
+            milestone = _select_milestone(cfg, baseline, used, allocated)
+        except Exception as e:
+            milestone_error = e
 
         msg = (
             f"GPU quota {project}: used {_human_k(used)}/{_human_k(allocated)} GPUh "
@@ -372,7 +378,8 @@ def compute_gpu_quota_messages(projects_cfg: dict):
             if days_remaining is not None and days_remaining > 0 and remaining > 0:
                 target_week = (remaining / days_remaining) * 7.0
 
-            if target_week and target_week > 0:
+            show_overall_projection = milestone is None
+            if show_overall_projection and target_week and target_week > 0:
                 target_ratio_pct = (weekly_val / target_week) * 100.0
                 ratio_emoji = _target_ratio_emoji(target_ratio_pct)
                 msg += (
@@ -381,7 +388,7 @@ def compute_gpu_quota_messages(projects_cfg: dict):
                 )
             else:
                 msg += f", last 7d {_human_k(weekly_val)} GPUh"
-            if weekly_val > 0 and remaining > 0:
+            if show_overall_projection and weekly_val > 0 and remaining > 0:
                 daily_rate = weekly_val / 7.0
                 eta_days = int(round(remaining / daily_rate)) if daily_rate > 0 else None
                 if eta_days is not None and days_remaining is not None and days_remaining > 0:
@@ -394,12 +401,8 @@ def compute_gpu_quota_messages(projects_cfg: dict):
 
         lines.append(msg)
 
-        try:
-            milestone = _select_milestone(cfg, baseline, used, allocated)
-        except Exception as e:
-            lines.append(f"  milestone: invalid config ({e})")
-            continue
-
+        if milestone_error:
+            lines.append(f"  milestone: invalid config ({milestone_error})")
         if milestone:
             lines.append(_format_milestone_message(milestone, used, weekly_val, baseline))
 
