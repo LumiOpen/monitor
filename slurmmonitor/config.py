@@ -77,15 +77,6 @@ slurm_partitions = [
 # formatted (YYYY-MM-DD). Optional milestone tracks an intermediate spend goal
 # until its date passes.
 gpu_quota_projects = {
-    "project_462000963": {
-        "start": "2025-05-22",
-        "end": "2026-05-31",
-        # "milestone": {
-        #     "name": "retention checkpoint",
-        #     "date": "2026-02-01",
-        #     "target_pct": 50.0,
-        # },
-    },
     "project_465002530": {
         # End date is intentionally omitted until confirmed; this avoids
         # reporting a misleading overall burn-down trajectory.
